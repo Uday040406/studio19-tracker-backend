@@ -96,7 +96,9 @@ function parseTracking(tracking) {
   const events = tracking.events || [];
   let gateIn = null;
   let departure = null;
-  let predictedArrival = parseDate(tracking.predicted_eta) || null;
+ let predictedArrival = parseDate(tracking.predicted_eta) 
+  || parseDate(tracking.best_case_eta) 
+  || null;
   let carrier = tracking.carrier_name || 'Unknown';
   let delayDays = 0;
   let status = 'in_transit';
