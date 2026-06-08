@@ -71,6 +71,27 @@ app.get('/api/test-track', async (req, res) => {
   }
 });
 
+app.get('/api/test-raw', async (req, res) => {
+  try {
+    const { getGocometToken } = require('./services/gocomet');
+    const token = await getGocometToken();
+    const fetchRes = await axios.get(
+      'https://tracking.gocomet.com/api/v1/integrations/live-tracking',
+      {
+        params: {
+          token: token,
+          'tracking_ids[]': '2e169188-bd57-4323-9844-c628b84246a6',
+          'tracking_numbers[]': 'ONEU0613652',
+          start_date: '01/01/2024'
+        }
+      }
+    );
+    res.json(fetchRes.data);
+  } catch (err) {
+    res.json({ error: err.message, details: err.response?.data });
+  }
+});
+
 app.listen(PORT, () => {
   console.log('Server running on port ' + PORT);
 });
