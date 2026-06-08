@@ -19,31 +19,29 @@ async function calculateIdealTimeline(goodsReadyDate, originPort, destinationPor
   const phaseMap = {};
   phases.forEach(p => phaseMap[p.phase_name] = p);
 
-  const factoryToPort = average(phaseMap.factory_to_port.min_days, phaseMap.factory_to_port.max_days);
-  const transitDays  = average(route.min_days, route.max_days);
-  const customsDays  = average(phaseMap.customs_clearance.min_days, phaseMap.customs_clearance.max_days);
-  const portToSite   = average(phaseMap.port_to_site.min_days, phaseMap.port_to_site.max_days);
+  const start = new Date(goodsReadyDate);
 
-  const start            = new Date(goodsReadyDate);
-  const plannedGateIn    = addDays(start, factoryToPort);
-  const plannedDeparture = addDays(plannedGateIn, 3);
-  const plannedArrival   = addDays(plannedDeparture, transitDays);
-  const plannedCustoms   = addDays(plannedArrival, customsDays);
-  const plannedSite      = addDays(plannedCustoms, portToSite);
+  const factoryMin = phaseMap.factory_to_port.min_days;
+  const factoryMax = phaseMap.factory_to_port.max_days;
+  const transitMin = route.min_days;
+  const transitMax = route.max_days;
+  const customsMin = phaseMap.customs_clearance.min_days;
+  const customsMax = phaseMap.customs_clearance.max_days;
+  const siteMin    = phaseMap.port_to_site.min_days;
+  const siteMax    = phaseMap.port_to_site.max_days;
 
   return {
-    planned_gate_in:       plannedGateIn,
-    planned_departure:     plannedDeparture,
-    planned_arrival:       plannedArrival,
-    planned_customs_done:  plannedCustoms,
-    planned_site_delivery: plannedSite,
-    route_min_days:        route.min_days,
-    route_max_days:        route.max_days
+    planned_gate_in_earliest:        addDays(start, factoryMin),
+    planned_gate_in_latest:          addDays(start, factoryMax),
+    planned_departure_earliest:      addDays(start, factoryMin + 3),
+    planned_departure_latest:        addDays(start, factoryMax + 3),
+    planned_arrival_earliest:        addDays(start, factoryMin + 3 + transitMin),
+    planned_arrival_latest:          addDays(start, factoryMax + 3 + transitMax),
+    planned_customs_done_earliest:   addDays(start, factoryMin + 3 + transitMin + customsMin),
+    planned_customs_done_latest:     addDays(start, factoryMax + 3 + transitMax + customsMax),
+    planned_site_delivery_earliest:  addDays(start, factoryMin + 3 + transitMin + customsMin + siteMin),
+    planned_site_delivery_latest:    addDays(start, factoryMax + 3 + transitMax + customsMax + siteMax),
   };
-}
-
-function average(min, max) {
-  return Math.round((min + max) / 2);
 }
 
 function addDays(date, days) {
