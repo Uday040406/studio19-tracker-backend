@@ -89,4 +89,14 @@ router.post('/:id/refresh', async (req, res) => {
   }
 });
 
+// Delete shipment
+router.delete('/:id', async (req, res) => {
+  const { error } = await supabase
+    .from('shipments')
+    .delete()
+    .eq('id', req.params.id);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ success: true });
+});
+
 module.exports = router;
