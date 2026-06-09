@@ -4,7 +4,6 @@ const supabase = require('../services/supabase');
 const { calculateIdealTimeline } = require('../services/calculator');
 const { getGocometToken, addTracking, fetchLiveTracking } = require('../services/gocomet');
 
-// Get all shipments for a project
 router.get('/project/:projectId', async (req, res) => {
   const { data, error } = await supabase
     .from('shipments')
@@ -15,7 +14,6 @@ router.get('/project/:projectId', async (req, res) => {
   res.json(data);
 });
 
-// Create new shipment — generates ideal timeline automatically
 router.post('/', async (req, res) => {
   const { project_id, origin_port, destination_port, departure_date } = req.body;
   if (!project_id || !origin_port || !destination_port || !departure_date) {
@@ -35,7 +33,6 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Add container number and start GoComet tracking
 router.post('/:id/track', async (req, res) => {
   const { container_number } = req.body;
   if (!container_number) return res.status(400).json({ error: 'Container number required' });
@@ -57,7 +54,6 @@ router.post('/:id/track', async (req, res) => {
   }
 });
 
-// Refresh live data from GoComet
 router.post('/:id/refresh', async (req, res) => {
   try {
     const { data: shipment } = await supabase
@@ -71,13 +67,14 @@ router.post('/:id/refresh', async (req, res) => {
     const { data, error } = await supabase
       .from('shipments')
       .update({
-        carrier: liveData.carrier,
-        actual_gate_in: liveData.actual_gate_in,
-        actual_departure: liveData.actual_departure,
+        carrier:           liveData.carrier,
+        actual_gate_in:    liveData.actual_gate_in,
+        actual_departure:  liveData.actual_departure,
         predicted_arrival: liveData.predicted_arrival,
-        delay_days: liveData.delay_days,
-        status: liveData.status,
-        last_updated: new Date().toISOString()
+        delay_days:        liveData.delay_days,
+        status:            liveData.status,
+        gocomet_events:    liveData.events,
+        last_updated:      new Date().toISOString()
       })
       .eq('id', req.params.id)
       .select()
@@ -89,7 +86,6 @@ router.post('/:id/refresh', async (req, res) => {
   }
 });
 
-// Delete shipment
 router.delete('/:id', async (req, res) => {
   const { error } = await supabase
     .from('shipments')
