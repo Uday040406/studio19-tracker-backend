@@ -32,29 +32,8 @@ app.get('/api/test-gocomet', async (req, res) => {
   }
 });
 
-app.get('/api/test-gocomet-track', async (req, res) => {
-  try {
-    const token = 'eyJhbGciOiJFUzI1NiJ9.eyJ1c2VyX2lkIjoiMDFkMmQxYzMtN2ZmYi00ZjVhLTgyYjgtYjExN2M5N2ZkZDVlIiwidW5pcV90b2tlbiI6ImI3MjBmOTM4LWJlMDQtNGI5ZC04MWUyLTQ3MTM3N2MwNjNmOSIsInRva2VuX3R5cGUiOiJpbnRlZ3JhdGlvbiIsImNsaWVudF9pZCI6IjJmNjY1MzQ3LWViOWMtNDk2Zi1iNWFjLTc1ZGZkZjQxNWU5OSIsImV4cCI6MTc4MzI1MzIyOH0.5-HZ9hhtUsKSwL_5Ylm23quHYBNTVa_NPP0qzBDgpIu7IDgDvtzs0UdrSq-QhEEv8Yd5a09SXaQt-9N8RUpbsQ';
-    const container = req.query.container || 'ONEU0613652';
-    const addRes = await axios.post('https://tracking.gocomet.com/api/v1/integrations/add_tracking_number', { token, tracking: { tracking_number: container, mode: 'ocean', carrier_code: 'ONEY' } });
-    res.json({ success: true, data: addRes.data });
-  } catch (err) {
-    res.json({ success: false, error: err.message, details: err.response ? err.response.data : null });
-  }
-});
-
-app.get('/api/test-gocomet-fetch', async (req, res) => {
-  try {
-    const token = 'eyJhbGciOiJFUzI1NiJ9.eyJ1c2VyX2lkIjoiMDFkMmQxYzMtN2ZmYi00ZjVhLTgyYjgtYjExN2M5N2ZkZDVlIiwidW5pcV90b2tlbiI6ImI3MjBmOTM4LWJlMDQtNGI5ZC04MWUyLTQ3MTM3N2MwNjNmOSIsInRva2VuX3R5cGUiOiJpbnRlZ3JhdGlvbiIsImNsaWVudF9pZCI6IjJmNjY1MzQ3LWViOWMtNDk2Zi1iNWFjLTc1ZGZkZjQxNWU5OSIsImV4cCI6MTc4MzI1MzIyOH0.5-HZ9hhtUsKSwL_5Ylm23quHYBNTVa_NPP0qzBDgpIu7IDgDvtzs0UdrSq-QhEEv8Yd5a09SXaQt-9N8RUpbsQ';
-    const fetchRes = await axios.get('https://tracking.gocomet.com/api/v1/integrations/live-tracking', { params: { token, 'tracking_ids[]': '2e169188-bd57-4323-9844-c628b84246a6', start_date: '01/01/2024' } });
-    res.json({ success: true, data: fetchRes.data });
-  } catch (err) {
-    res.json({ success: false, error: err.message, details: err.response ? err.response.data : null });
-  }
-});
-
 app.get('/api/test-track', async (req, res) => {
-  const container = req.query.container || 'ONEU0613652';
+  const container = req.query.container || 'HMMU2204997';
   try {
     const { getGocometToken, addTracking, fetchLiveTracking } = require('./services/gocomet');
     const token = await getGocometToken();
@@ -71,22 +50,22 @@ app.get('/api/test-track', async (req, res) => {
   }
 });
 
-app.get('/api/test-raw', async (req, res) => {
+app.get('/api/test-refresh', async (req, res) => {
   try {
     const { getGocometToken } = require('./services/gocomet');
     const token = await getGocometToken();
-    const fetchRes = await axios.get(
+    const response = await axios.get(
       'https://tracking.gocomet.com/api/v1/integrations/live-tracking',
       {
         params: {
           token: token,
-          'tracking_ids[]': '2e169188-bd57-4323-9844-c628b84246a6',
-          'tracking_numbers[]': 'ONEU0613652',
+          'tracking_ids[]': '2418eae7-2290-4ed0-8c40-efb3ae4b11ee',
+          'tracking_numbers[]': 'HMMU2204997',
           start_date: '01/01/2024'
         }
       }
     );
-    res.json(fetchRes.data);
+    res.json(response.data);
   } catch (err) {
     res.json({ error: err.message, details: err.response?.data });
   }
