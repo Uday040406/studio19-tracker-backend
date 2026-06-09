@@ -1,6 +1,6 @@
 const supabase = require('./supabase');
 
-async function calculateIdealTimeline(goodsReadyDate, originPort, destinationPort) {
+async function calculateIdealTimeline(departureDate, originPort, destinationPort) {
   const { data: route, error } = await supabase
     .from('routes')
     .select('*')
@@ -19,10 +19,8 @@ async function calculateIdealTimeline(goodsReadyDate, originPort, destinationPor
   const phaseMap = {};
   phases.forEach(p => phaseMap[p.phase_name] = p);
 
-  const start = new Date(goodsReadyDate);
+  const start = new Date(departureDate);
 
-  const factoryMin = phaseMap.factory_to_port.min_days;
-  const factoryMax = phaseMap.factory_to_port.max_days;
   const transitMin = route.min_days;
   const transitMax = route.max_days;
   const customsMin = phaseMap.customs_clearance.min_days;
@@ -31,16 +29,12 @@ async function calculateIdealTimeline(goodsReadyDate, originPort, destinationPor
   const siteMax    = phaseMap.port_to_site.max_days;
 
   return {
-    planned_gate_in_earliest:       addDays(start, factoryMin),
-    planned_gate_in_latest:         addDays(start, factoryMax),
-    planned_departure_earliest:     addDays(start, factoryMin + 3),
-    planned_departure_latest:       addDays(start, factoryMax + 3),
-    planned_arrival_earliest:       addDays(start, factoryMin + 3 + transitMin),
-    planned_arrival_latest:         addDays(start, factoryMax + 3 + transitMax),
-    planned_customs_done_earliest:  addDays(start, factoryMin + 3 + transitMin + customsMin),
-    planned_customs_done_latest:    addDays(start, factoryMax + 3 + transitMax + customsMax),
-    planned_site_delivery_earliest: addDays(start, factoryMin + 3 + transitMin + customsMin + siteMin),
-    planned_site_delivery_latest:   addDays(start, factoryMax + 3 + transitMax + customsMax + siteMax),
+    planned_arrival_earliest:       addDays(start, transitMin),
+    planned_arrival_latest:         addDays(start, transitMax),
+    planned_customs_done_earliest:  addDays(start, transitMin + customsMin),
+    planned_customs_done_latest:    addDays(start, transitMax + customsMax),
+    planned_site_delivery_earliest: addDays(start, transitMin + customsMin + siteMin),
+    planned_site_delivery_latest:   addDays(start, transitMax + customsMax + siteMax),
   };
 }
 

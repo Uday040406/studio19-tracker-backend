@@ -17,15 +17,15 @@ router.get('/project/:projectId', async (req, res) => {
 
 // Create new shipment — generates ideal timeline automatically
 router.post('/', async (req, res) => {
-  const { project_id, origin_port, destination_port, goods_ready_date } = req.body;
-  if (!project_id || !origin_port || !destination_port || !goods_ready_date) {
+  const { project_id, origin_port, destination_port, departure_date } = req.body;
+  if (!project_id || !origin_port || !destination_port || !departure_date) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
   try {
-    const timeline = await calculateIdealTimeline(goods_ready_date, origin_port, destination_port);
+    const timeline = await calculateIdealTimeline(departure_date, origin_port, destination_port);
     const { data, error } = await supabase
       .from('shipments')
-      .insert([{ project_id, origin_port, destination_port, goods_ready_date, ...timeline, status: 'pending' }])
+      .insert([{ project_id, origin_port, destination_port, departure_date, ...timeline, status: 'pending' }])
       .select()
       .single();
     if (error) return res.status(500).json({ error: error.message });
@@ -43,7 +43,7 @@ router.post('/:id/track', async (req, res) => {
     const { data: shipment } = await supabase
       .from('shipments').select('*').eq('id', req.params.id).single();
     const token = await getGocometToken();
-    const trackingId = await addTracking(container_number, shipment.goods_ready_date, token);
+    const trackingId = await addTracking(container_number, shipment.departure_date, token);
     const { data, error } = await supabase
       .from('shipments')
       .update({ container_number, gocomet_tracking_id: trackingId, status: 'tracking' })
@@ -57,7 +57,7 @@ router.post('/:id/track', async (req, res) => {
   }
 });
 
-// Refresh live data from GoComet (called when refresh button is clicked)
+// Refresh live data from GoComet
 router.post('/:id/refresh', async (req, res) => {
   try {
     const { data: shipment } = await supabase
