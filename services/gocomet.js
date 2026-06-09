@@ -4,19 +4,25 @@ let cachedToken = null;
 let tokenExpiry = null;
 
 async function getGocometToken() {
-  if (cachedToken && tokenExpiry && new Date() < tokenExpiry) {
+  if (cachedToken && tokenExpiry && new Date() < new Date(tokenExpiry)) {
     return cachedToken;
   }
-  const response = await axios.post(
-    'https://login.gocomet.com/api/v1/integrations/generate-token-number',
-    {
-      email: process.env.GOCOMET_EMAIL,
-      password: process.env.GOCOMET_PASSWORD
-    }
-  );
-  cachedToken = response.data.token;
-  tokenExpiry = new Date(Date.now() + 25 * 24 * 60 * 60 * 1000);
-  return cachedToken;
+  try {
+    const response = await axios.post(
+      'https://login.gocomet.com/api/v1/integrations/generate-token-number',
+      {
+        email: process.env.GOCOMET_EMAIL,
+        password: process.env.GOCOMET_PASSWORD
+      }
+    );
+    cachedToken = response.data.token;
+    tokenExpiry = new Date(Date.now() + 25 * 24 * 60 * 60 * 1000);
+    return cachedToken;
+  } catch (err) {
+    cachedToken = null;
+    tokenExpiry = null;
+    throw err;
+  }
 }
 
 const CARRIER_MAP = {
@@ -68,6 +74,7 @@ async function addTracking(containerNumber, dispatchDate, token) {
 }
 
 async function fetchLiveTracking(trackingId, containerNumber, token) {
+  console.log('fetchLiveTracking called:', trackingId, containerNumber);
   const response = await axios.get(
     'https://tracking.gocomet.com/api/v1/integrations/live-tracking',
     {
@@ -79,7 +86,9 @@ async function fetchLiveTracking(trackingId, containerNumber, token) {
       }
     }
   );
+  console.log('GoComet raw keys:', Object.keys(response.data));
   const trackings = response.data.updated_trackings;
+  console.log('trackings length:', trackings ? trackings.length : 'null');
   if (!trackings || trackings.length === 0) return null;
   return parseTracking(trackings[0]);
 }
@@ -153,13 +162,13 @@ function parseTracking(tracking) {
 
   return {
     carrier,
-    actual_gate_in:   gateIn,
-    actual_departure: departure,
+    actual_gate_in:    gateIn,
+    actual_departure:  departure,
     predicted_arrival: predictedArrival,
-    delay_days:       delayDays,
+    delay_days:        delayDays,
     status,
-    raw_prediction:   tracking.status || 'Processing',
-    events:           filteredEvents
+    raw_prediction:    tracking.status || 'Processing',
+    events:            filteredEvents
   };
 }
 
