@@ -84,7 +84,6 @@ async function fetchLiveTracking(trackingId, containerNumber, token) {
   return parseTracking(trackings[0]);
 }
 
-// GoComet sends dates as DD/MM/YYYY — convert to YYYY-MM-DD
 function parseDate(dateStr) {
   if (!dateStr) return null;
   const parts = dateStr.split('/');
@@ -92,13 +91,22 @@ function parseDate(dateStr) {
   return `${parts[2]}-${parts[1]}-${parts[0]}`;
 }
 
+const ALLOWED_EVENTS = [
+  'dispatch',
+  'gate_in',
+  'origin_departure',
+  'trans_shipment_arrival',
+  'trans_shipment_departure',
+  'arrival'
+];
+
 function parseTracking(tracking) {
   const events = tracking.events || [];
   let gateIn = null;
   let departure = null;
- let predictedArrival = parseDate(tracking.predicted_eta) 
-  || parseDate(tracking.best_case_eta) 
-  || null;
+  let predictedArrival = parseDate(tracking.predicted_eta)
+    || parseDate(tracking.best_case_eta)
+    || null;
   let carrier = tracking.carrier_name || 'Unknown';
   let delayDays = 0;
   let status = 'in_transit';
@@ -117,7 +125,6 @@ function parseTracking(tracking) {
       status = 'arrived';
     }
 
-    // Find max delay across all delayed events
     if (event.delayed && event.original_planned_date && event.planned_date) {
       const orig    = new Date(parseDate(event.original_planned_date));
       const current = new Date(parseDate(event.planned_date));
@@ -126,7 +133,6 @@ function parseTracking(tracking) {
     }
   });
 
-  // Map GoComet status to our internal status
   const rawStatus = (tracking.status || '').toLowerCase();
   if (status !== 'arrived') {
     if (rawStatus === 'delayed') status = 'delayed';
@@ -134,14 +140,26 @@ function parseTracking(tracking) {
     else if (rawStatus === 'early') status = 'early';
   }
 
+  const filteredEvents = events
+    .filter(e => ALLOWED_EVENTS.includes((e.event || '').toLowerCase()))
+    .map(e => ({
+      event:         e.event,
+      display_event: e.display_event || e.event,
+      location:      e.location || '',
+      actual_date:   parseDate(e.actual_date) || null,
+      planned_date:  parseDate(e.planned_date) || null,
+      delayed:       e.delayed || false
+    }));
+
   return {
     carrier,
-    actual_gate_in: gateIn,
+    actual_gate_in:   gateIn,
     actual_departure: departure,
     predicted_arrival: predictedArrival,
-    delay_days: delayDays,
+    delay_days:       delayDays,
     status,
-    raw_prediction: tracking.status || 'Processing'
+    raw_prediction:   tracking.status || 'Processing',
+    events:           filteredEvents
   };
 }
 
