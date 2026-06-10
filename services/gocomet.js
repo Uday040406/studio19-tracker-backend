@@ -113,9 +113,15 @@ function parseTracking(tracking) {
   const events = tracking.events || [];
   let gateIn = null;
   let departure = null;
-  let predictedArrival = parseDate(tracking.predicted_eta)
-    || parseDate(tracking.best_case_eta)
-    || null;
+  let predictedArrival = parseDate(tracking.stats?.predicted_eta)
+  || parseDate(tracking.predicted_eta)
+  || null;
+
+// Fallback: use arrival event planned_date if no prediction
+if (!predictedArrival) {
+  const arrivalEvent = events.find(e => (e.event || '').toLowerCase() === 'arrival');
+  if (arrivalEvent?.planned_date) predictedArrival = parseDate(arrivalEvent.planned_date);
+}
   let carrier = tracking.carrier_name || 'Unknown';
   let delayDays = 0;
   let status = 'in_transit';
