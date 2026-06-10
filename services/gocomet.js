@@ -113,10 +113,23 @@ function parseTracking(tracking) {
   const events = tracking.events || [];
   let gateIn = null;
   let departure = null;
-  let predictedArrival = parseDate(tracking.stats?.predicted_eta)
-  || parseDate(tracking.predicted_eta)
-  || null;
-
+ // Get predicted arrival from the arrival event itself — most accurate
+let predictedArrival = null;
+events.forEach(event => {
+  if ((event.event || '').toLowerCase() === 'arrival') {
+    if (event.actual_date) {
+      predictedArrival = parseDate(event.actual_date);
+    } else if (event.planned_date) {
+      predictedArrival = parseDate(event.planned_date);
+    }
+  }
+});
+// Fall back to GoComet stats
+if (!predictedArrival) {
+  predictedArrival = parseDate(tracking.stats?.predicted_eta)
+    || parseDate(tracking.stats?.best_case_eta)
+    || null;
+}
 // Fallback: use arrival event planned_date if no prediction
 if (!predictedArrival) {
   const arrivalEvent = events.find(e => (e.event || '').toLowerCase() === 'arrival');
