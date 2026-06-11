@@ -142,4 +142,21 @@ router.get('/project/:projectId', async (req, res) => {
   res.end();
 });
 
+router.put('/:id', async (req, res) => {
+  const { shipment_name, expected_arrival_date, container_number } = req.body;
+  const updates = {};
+  if (shipment_name !== undefined)         updates.shipment_name = shipment_name;
+  if (expected_arrival_date !== undefined) updates.expected_arrival_date = expected_arrival_date;
+  if (container_number !== undefined)      updates.container_number = container_number;
+
+  const { data, error } = await supabase
+    .from('shipments')
+    .update(updates)
+    .eq('id', req.params.id)
+    .select()
+    .single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
 module.exports = router;
