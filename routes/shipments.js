@@ -62,7 +62,9 @@ router.post('/:id/refresh', async (req, res) => {
       delayDays = liveData.delay_days;
     }
 
-    const status = delayDays > 0 ? 'delayed' : delayDays < 0 ? 'early' : 'on_time';
+    const status = liveData.status === 'arrived'
+      ? 'arrived'
+      : (delayDays > 0 ? 'delayed' : delayDays < 0 ? 'early' : 'on_time');
 
     const { data, error } = await supabase
       .from('shipments')

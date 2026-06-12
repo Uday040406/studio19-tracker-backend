@@ -64,10 +64,11 @@ async function addTracking(containerNumber, dispatchDate, token) {
     );
     return response.data.tracking_id;
   } catch (err) {
-    if (err.response && err.response.status === 422) {
-      const errorMsg = err.response.data.error || '';
+    if (err.response && err.response.data) {
+      const errorMsg = err.response.data.error || JSON.stringify(err.response.data);
       const match = errorMsg.match(/id\s+([a-f0-9-]{36})/i);
       if (match) return match[1];
+      throw new Error(`GoComet: ${errorMsg}`);
     }
     throw err;
   }
