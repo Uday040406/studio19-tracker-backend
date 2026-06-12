@@ -3,24 +3,40 @@ const axios = require('axios');
 let cachedToken = null;
 let tokenExpiry = null;
 
-async function getGocometToken() {
-  if (cachedToken && tokenExpiry && new Date() < new Date(tokenExpiry)) {
-    return cachedToken;
+async function addTracking(containerNumber, dispatchDate, token, carrierCodeOverride) {
+  const carrierCode = (carrierCodeOverride && carrierCodeOverride.trim().toUpperCase())
+    || getCarrierCode(containerNumber);
+
+  const trackingPayload = {
+    token: token,
+    tracking: {
+      tracking_number: containerNumber,
+      mode: 'ocean',
+      dispatch_date: formatDateForGocomet(dispatchDate)
+    }
+  };
+  if (carrierCode) {
+    trackingPayload.tracking.carrier_code = carrierCode;
   }
   try {
     const response = await axios.post(
-      'https://login.gocomet.com/api/v1/integrations/generate-token-number',
-      {
-        email: process.env.GOCOMET_EMAIL,
-        password: process.env.GOCOMET_PASSWORD
-      }
+      'https://tracking.gocomet.com/api/v1/integrations/add_tracking_number',
+      trackingPayload
     );
-    cachedToken = response.data.token;
-    tokenExpiry = new Date(Date.now() + 25 * 24 * 60 * 60 * 1000);
-    return cachedToken;
+    return response.data.tracking_id;
   } catch (err) {
-    cachedToken = null;
-    tokenExpiry = null;
+    if (err.response && err.response.data) {
+      const errorMsg = err.response.data.error || JSON.stringify(err.response.data);
+      const match = errorMsg.match(/id\s+([a-f0-9-]{36})/i);
+      if (match) return match[1];
+      if (!carrierCode && /carrier_code/i.test(errorMsg)) {
+        throw new Error(
+          `GoComet needs a carrier code for container prefix "${containerNumber.substring(0,4).toUpperCase()}" ` +
+          `— enter the Carrier Code (e.g. EGLV, MAEU, MSCU) in the Add Shipment form and try again.`
+        );
+      }
+      throw new Error(`GoComet: ${errorMsg}`);
+    }
     throw err;
   }
 }
@@ -44,6 +60,27 @@ function getCarrierCode(containerNumber) {
   return CARRIER_MAP[prefix] || null;
 }
 
+async function lookupExistingTracking(containerNumber, token) {
+  try {
+    const response = await axios.get(
+      'https://tracking.gocomet.com/api/v1/integrations/live-tracking',
+      {
+        params: {
+          token: token,
+          'tracking_numbers[]': containerNumber,
+          start_date: '01/01/2024'
+        }
+      }
+    );
+    const trackings = response.data.updated_trackings;
+    if (!trackings || trackings.length === 0) return null;
+    const t = trackings[0];
+    return t.id || t.tracking_id || t.uuid || null;
+  } catch {
+    return null;
+  }
+}
+
 async function addTracking(containerNumber, dispatchDate, token) {
   const carrierCode = getCarrierCode(containerNumber);
   const trackingPayload = {
@@ -54,9 +91,8 @@ async function addTracking(containerNumber, dispatchDate, token) {
       dispatch_date: formatDateForGocomet(dispatchDate)
     }
   };
-  if (carrierCode) {
-    trackingPayload.tracking.carrier_code = carrierCode;
-  }
+  if (carrierCode) trackingPayload.tracking.carrier_code = carrierCode;
+
   try {
     const response = await axios.post(
       'https://tracking.gocomet.com/api/v1/integrations/add_tracking_number',
@@ -66,8 +102,16 @@ async function addTracking(containerNumber, dispatchDate, token) {
   } catch (err) {
     if (err.response && err.response.data) {
       const errorMsg = err.response.data.error || JSON.stringify(err.response.data);
+
+      // "already exists, id <uuid>" case — extract directly
       const match = errorMsg.match(/id\s+([a-f0-9-]{36})/i);
       if (match) return match[1];
+
+      // Otherwise (e.g. carrier_code missing): container's likely already on
+      // GoComet (manually added) — find its tracking id by container number
+      const existingId = await lookupExistingTracking(containerNumber, token);
+      if (existingId) return existingId;
+
       throw new Error(`GoComet: ${errorMsg}`);
     }
     throw err;
@@ -107,24 +151,92 @@ const ALLOWED_EVENTS = [
   'origin_departure',
   'trans_shipment_arrival',
   'trans_shipment_departure',
-  'arrival'
+  'loaded_at_pod',
+  'departure_at_pod',
+  'arrival',
+  'inland_destination_arrival'
 ];
+
+// Final-leg event types — whichever of these is LAST in the journey is the true destination
+const FINAL_EVENT_TYPES = ['arrival', 'inland_destination_arrival'];
 
 function parseTracking(tracking) {
   const events = tracking.events || [];
   let gateIn = null;
   let departure = null;
- // Get predicted arrival from the arrival event itself — most accurate
-let predictedArrival = null;
-events.forEach(event => {
-  if ((event.event || '').toLowerCase() === 'arrival') {
-    if (event.actual_date) {
-      predictedArrival = parseDate(event.actual_date);
-    } else if (event.planned_date) {
-      predictedArrival = parseDate(event.planned_date);
-    }
+
+  // True final destination = last occurrence of arrival / inland_destination_arrival
+  const finalEvents = events.filter(e => FINAL_EVENT_TYPES.includes((e.event || '').toLowerCase()));
+  const finalEvent = finalEvents.length > 0 ? finalEvents[finalEvents.length - 1] : null;
+
+  let predictedArrival = null;
+  if (finalEvent) {
+    if (finalEvent.actual_date) predictedArrival = parseDate(finalEvent.actual_date);
+    else if (finalEvent.planned_date) predictedArrival = parseDate(finalEvent.planned_date);
   }
-});
+  if (!predictedArrival) {
+    predictedArrival = parseDate(tracking.stats?.predicted_eta)
+      || parseDate(tracking.stats?.best_case_eta)
+      || null;
+  }
+
+  let carrier = tracking.carrier_name || 'Unknown';
+  let delayDays = 0;
+  let status = 'in_transit';
+
+  events.forEach(event => {
+    const type = (event.event || '').toLowerCase();
+    const actualDate = event.actual_date || null;
+
+    if (type === 'gate_in' && actualDate) {
+      gateIn = parseDate(actualDate);
+    }
+    if (type === 'origin_departure' && actualDate) {
+      departure = parseDate(actualDate);
+    }
+
+    if (event.delayed && event.original_planned_date && event.planned_date) {
+      const orig    = new Date(parseDate(event.original_planned_date));
+      const current = new Date(parseDate(event.planned_date));
+      const diff    = Math.round((current - orig) / (1000 * 60 * 60 * 24));
+      if (diff > delayDays) delayDays = diff;
+    }
+  });
+
+  // Arrived = true final-leg event (port, or inland destination if route has one) is done
+  if (finalEvent && finalEvent.actual_date) {
+    status = 'arrived';
+  }
+
+  const rawStatus = (tracking.status || '').toLowerCase();
+  if (status !== 'arrived') {
+    if (rawStatus === 'delayed') status = 'delayed';
+    else if (rawStatus === 'on time') status = 'on_time';
+    else if (rawStatus === 'early') status = 'early';
+  }
+
+  const filteredEvents = events
+    .filter(e => ALLOWED_EVENTS.includes((e.event || '').toLowerCase()))
+    .map(e => ({
+      event:         e.event,
+      display_event: e.display_event || e.event,
+      location:      e.location || '',
+      actual_date:   parseDate(e.actual_date) || null,
+      planned_date:  parseDate(e.planned_date) || null,
+      delayed:       e.delayed || false
+    }));
+
+  return {
+    carrier,
+    actual_gate_in:    gateIn,
+    actual_departure:  departure,
+    predicted_arrival: predictedArrival,
+    delay_days:        delayDays,
+    status,
+    raw_prediction:    tracking.status || 'Processing',
+    events:            filteredEvents
+  };
+}
 // Fall back to GoComet stats
 if (!predictedArrival) {
   predictedArrival = parseDate(tracking.stats?.predicted_eta)

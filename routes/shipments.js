@@ -15,13 +15,13 @@ router.get('/project/:projectId', async (req, res) => {
 
 // Create shipment + start tracking immediately
 router.post('/', async (req, res) => {
-  const { project_id, container_number, expected_arrival_date, shipment_name } = req.body;
+  const { project_id, container_number, expected_arrival_date, shipment_name, carrier_code } = req.body;
   if (!project_id || !container_number || !expected_arrival_date) {
     return res.status(400).json({ error: 'project_id, container_number and expected_arrival_date required' });
   }
   try {
     const token = await getGocometToken();
-    const trackingId = await addTracking(container_number, expected_arrival_date, token);
+    const trackingId = await addTracking(container_number, expected_arrival_date, token, carrier_code);
     const { data, error } = await supabase
       .from('shipments')
       .insert([{
