@@ -24,17 +24,29 @@ async function addTracking(containerNumber, dispatchDate, token, carrierCodeOver
       trackingPayload
     );
     return response.data.tracking_id;
-  } catch (err) {
+} catch (err) {
     if (err.response && err.response.data) {
       const errorMsg = err.response.data.error || JSON.stringify(err.response.data);
+
+      // "already exists, id <uuid>" — extract tracking ID directly
       const match = errorMsg.match(/id\s+([a-f0-9-]{36})/i);
       if (match) return match[1];
-      if (!carrierCode && /carrier_code/i.test(errorMsg)) {
-        throw new Error(
-          `GoComet needs a carrier code for container prefix "${containerNumber.substring(0,4).toUpperCase()}" ` +
-          `— enter the Carrier Code (e.g. EGLV, MAEU, MSCU) in the Add Shipment form and try again.`
+
+      // carrier_code missing or any other error — container is probably already
+      // on GoComet (manually added). Look it up by container number.
+      try {
+        const liveRes = await axios.get(
+          'https://tracking.gocomet.com/api/v1/integrations/live-tracking',
+          { params: { token, 'tracking_numbers[]': containerNumber, start_date: '01/01/2024' } }
         );
-      }
+        const trackings = liveRes.data.updated_trackings;
+        if (trackings && trackings.length > 0) {
+          const t = trackings[0];
+          const existingId = t.id || t.tracking_id || t.uuid || null;
+          if (existingId) return existingId;
+        }
+      } catch (_) {}
+
       throw new Error(`GoComet: ${errorMsg}`);
     }
     throw err;
@@ -53,6 +65,7 @@ const CARRIER_MAP = {
   'YMLU': 'YMLU',
   'EGLV': 'EGLV',
   'TEMU': 'TEMU', 'TGBU': 'TGBU',
+  'KMTU': 'KMTU',
 };
 
 function getCarrierCode(containerNumber) {
@@ -302,7 +315,6 @@ if (!predictedArrival) {
     raw_prediction:    tracking.status || 'Processing',
     events:            filteredEvents
   };
-}
 
 function formatDateForGocomet(dateStr) {
   const d = new Date(dateStr);
