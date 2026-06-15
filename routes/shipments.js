@@ -114,4 +114,17 @@ router.put('/:id', async (req, res) => {
   res.json(data);
 });
 
+router.patch('/:id/move', async (req, res) => {
+  const { project_id } = req.body;
+  if (!project_id) return res.status(400).json({ error: 'project_id required' });
+  const { data, error } = await supabase
+    .from('shipments')
+    .update({ project_id })
+    .eq('id', req.params.id)
+    .select()
+    .single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
 module.exports = router;
