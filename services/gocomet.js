@@ -102,11 +102,11 @@ async function fetchLiveTracking(trackingId, containerNumber, token) {
         token: token,
         'tracking_ids[]': trackingId,
         'tracking_numbers[]': containerNumber,
-        start_date: '01/01/2024'
+        start_date: '01/01/2023'
       }
     }
   );
-  console.log('GoComet raw keys:', Object.keys(response.data));
+  console.log('FULL RAW TRACKING:', JSON.stringify(trackings[0].events, null, 2));
   const trackings = response.data.updated_trackings;
   console.log('trackings length:', trackings ? trackings.length : 'null');
   if (!trackings || trackings.length === 0) return null;
@@ -172,6 +172,7 @@ function parseTracking(tracking) {
   }
 
 console.log('RAW EVENTS:', events.map(e => e.event));
+console.log('FULL RAW TRACKING:', JSON.stringify(events, null, 2));
   const filteredEvents = events
     .filter(e => (e.event || '').toLowerCase() !== 'dispatch')
     .reduce((acc, e) => {
