@@ -106,8 +106,9 @@ async function fetchLiveTracking(trackingId, containerNumber, token) {
       }
     }
   );
-  console.log('FULL RAW TRACKING:', JSON.stringify(trackings[0].events, null, 2));
   const trackings = response.data.updated_trackings;
+  console.log('GoComet raw keys:', Object.keys(response.data));
+  console.log('trackings length:', trackings ? trackings.length : 'null');
   console.log('trackings length:', trackings ? trackings.length : 'null');
   if (!trackings || trackings.length === 0) return null;
   return parseTracking(trackings[0]);
