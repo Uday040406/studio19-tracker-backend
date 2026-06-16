@@ -120,8 +120,6 @@ function parseDate(dateStr) {
   return `${parts[2]}-${parts[1]}-${parts[0]}`;
 }
 
-const STOP_EVENTS = ['gate_out', 'empty_return'];
-
 const ALLOWED_EVENTS = [
   'gate_in',
   'origin_departure',
@@ -185,7 +183,7 @@ function parseTracking(tracking) {
 
 console.log('RAW EVENTS:', events.map(e => e.event));
   const filteredEvents = events
-    .filter(e => ALLOWED_EVENTS.includes((e.event || '').toLowerCase()))
+    .filter(e => (e.event || '').toLowerCase() !== 'dispatch')
     .reduce((acc, e) => {
       const type = (e.event || '').toLowerCase();
       if (STOP_EVENTS.includes(type)) return acc;
