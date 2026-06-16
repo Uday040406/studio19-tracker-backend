@@ -173,7 +173,8 @@ function parseTracking(tracking) {
 
 console.log('RAW EVENTS:', events.map(e => e.event));
 console.log('FULL RAW TRACKING:', JSON.stringify(events, null, 2));
-  const filteredEvents = events
+
+const filteredEvents = events
     .filter(e => (e.event || '').toLowerCase() !== 'dispatch')
     .reduce((acc, e) => {
       const type = (e.event || '').toLowerCase();
