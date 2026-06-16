@@ -174,6 +174,7 @@ function parseTracking(tracking) {
 // add this just before filteredEvents
 console.log('RAW EVENTS:', events.map(e => e.event));
 
+
   const filteredEvents = events
     .filter(e => (e.event || '').toLowerCase() !== 'dispatch')
     .reduce((acc, e) => {
