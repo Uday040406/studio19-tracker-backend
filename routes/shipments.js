@@ -37,6 +37,7 @@ router.post('/', async (req, res) => {
     if (error) return res.status(500).json({ error: error.message });
     res.json(data);
   } catch (err) {
+    console.error('REFRESH ERROR:', err.message, err.stack);
     res.status(500).json({ error: err.message });
   }
 });
