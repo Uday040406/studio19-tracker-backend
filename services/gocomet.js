@@ -175,21 +175,14 @@ function parseTracking(tracking) {
 console.log('RAW EVENTS:', events.map(e => e.event));
 console.log('FULL RAW TRACKING:', JSON.stringify(events, null, 2));
 
-const filteredEvents = events
-    .filter(e => (e.event || '').toLowerCase() !== 'dispatch')
-    .reduce((acc, e) => {
-      const type = (e.event || '').toLowerCase();
-      if (STOP_EVENTS.includes(type)) return acc;
-      acc.push({
-        event:         e.event,
-        display_event: e.display_event || e.event,
-        location:      e.location || '',
-        actual_date:   parseDate(e.actual_date) || null,
-        planned_date:  parseDate(e.planned_date) || null,
-        delayed:       e.delayed || false
-      });
-      return acc;
-    }, []);
+const filteredEvents = events.map(e => ({
+  event:         e.event,
+  display_event: e.display_event || e.event,
+  location:      e.location || '',
+  actual_date:   parseDate(e.actual_date) || null,
+  planned_date:  parseDate(e.planned_date) || null,
+  delayed:       e.delayed || false
+}));
 
   return {
     carrier,
