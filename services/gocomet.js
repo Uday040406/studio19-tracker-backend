@@ -176,6 +176,7 @@ console.log('RAW EVENTS:', events.map(e => e.event));
 console.log('FULL RAW TRACKING:', JSON.stringify(events, null, 2));
 
 const ALLOWED_EVENTS = [
+  'dispatch',
   'gate_in',
   'origin_departure',
   'trans_shipment_arrival',
