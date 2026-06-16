@@ -120,14 +120,7 @@ function parseDate(dateStr) {
   return `${parts[2]}-${parts[1]}-${parts[0]}`;
 }
 
-const ALLOWED_EVENTS = [
-  'dispatch',
-  'gate_in',
-  'origin_departure',
-  'trans_shipment_arrival',
-  'trans_shipment_departure',
-  'arrival'
-];
+const STOP_EVENTS = ['gate_out', 'empty_return'];
 
 function parseTracking(tracking) {
   const events = tracking.events || [];
@@ -179,15 +172,20 @@ function parseTracking(tracking) {
   }
 
   const filteredEvents = events
-    .filter(e => ALLOWED_EVENTS.includes((e.event || '').toLowerCase()))
-    .map(e => ({
-      event:         e.event,
-      display_event: e.display_event || e.event,
-      location:      e.location || '',
-      actual_date:   parseDate(e.actual_date) || null,
-      planned_date:  parseDate(e.planned_date) || null,
-      delayed:       e.delayed || false
-    }));
+    .filter(e => (e.event || '').toLowerCase() !== 'dispatch')
+    .reduce((acc, e) => {
+      const type = (e.event || '').toLowerCase();
+      if (STOP_EVENTS.includes(type)) return acc;
+      acc.push({
+        event:         e.event,
+        display_event: e.display_event || e.event,
+        location:      e.location || '',
+        actual_date:   parseDate(e.actual_date) || null,
+        planned_date:  parseDate(e.planned_date) || null,
+        delayed:       e.delayed || false
+      });
+      return acc;
+    }, []);
 
   return {
     carrier,
