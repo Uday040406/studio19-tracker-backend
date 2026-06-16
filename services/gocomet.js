@@ -175,7 +175,7 @@ function parseTracking(tracking) {
 console.log('RAW EVENTS:', events.map(e => e.event));
 console.log('FULL RAW TRACKING:', JSON.stringify(events, null, 2));
 
-const STOP_EVENTS = ['gate_out', 'empty_return'];
+const STOP_EVENTS = ['dispatch','gate_out', 'empty_return'];
 
 const ALLOWED_EVENTS = [
   'gate_in',
