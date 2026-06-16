@@ -120,17 +120,7 @@ function parseDate(dateStr) {
   return `${parts[2]}-${parts[1]}-${parts[0]}`;
 }
 
-const ALLOWED_EVENTS = [
-  'gate_in',
-  'origin_departure',
-  'trans_shipment_arrival',
-  'trans_shipment_departure',
-  'arrival',
-  'discharge_at_pod',
-  'loaded_at_pod',
-  'departure_at_pod',
-  'inland_destination_arrival',
-];
+const STOP_EVENTS = ['gate_out', 'empty_return'];
 
 function parseTracking(tracking) {
   const events = tracking.events || [];
